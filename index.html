@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Studio-Suche</title>
+  <!-- Leaflet CSS & JS für die interaktive Karte -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #04C0B0; margin: 0; padding: 20px; }
+    .container { max-width: 900px; margin: auto; background: #E5DDD4; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    
+    /* Header mit Logo-Ausrichtung */
+    .custom-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .custom-header img {
+      height: 100px;
+      width: auto;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .search-box { display: flex; gap: 10px; margin-top: 30px; margin-bottom: 35px; }
+    .search-box input { 
+      flex: 1; 
+      padding: 12px 16px; 
+      border: none; 
+      background-color: #222222; 
+      color: #FFFFFF; 
+      border-radius: 8px; 
+      font-size: 16px; 
+      box-shadow: 0 0 35px 12px rgba(34, 34, 34, 0.4); 
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .search-box input::placeholder { 
+      color: #A0A0A0; 
+    }
+
+    .search-box input:focus {
+      box-shadow: 0 0 45px 18px rgba(34, 34, 34, 0.6);
+    }
+
+    .search-box button { 
+      padding: 12px 24px; 
+      background-color: #222222; 
+      color: white; 
+      border: none; 
+      border-radius: 8px; 
+      font-size: 16px; 
+      cursor: pointer; 
+      box-shadow: 0 0 35px 12px rgba(34, 34, 34, 0.4); 
+      transition: all 0.3s ease; 
+    }
+
+    .search-box button:hover { 
+      background-color: #333333; 
+      box-shadow: 0 0 45px 18px rgba(34, 34, 34, 0.6);
+    }
+
+    .result-card { display: none; background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .result-card h3 { margin-top: 0; color: #2e7d32; }
+    #map { height: 450px; border-radius: 8px; border: 1px solid #ddd; margin-top: 15px; }
+    
+    /* Tabelle Styling & Zebra-Streifen */
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.1); }
+    th { background-color: #d8cfc4; font-weight: bold; }
+    
+    /* Anklickbare Zeilen & Effekte */
+    tbody tr {
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    /* Jede zweite Zeile abwechselnd einfärben */
+    tbody tr:nth-child(even) {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    /* Hover-Effekt beim Drüberfahren */
+    tbody tr:hover {
+      background-color: rgba(0, 0, 0, 0.09);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2 class="custom-header">
+    <img src="https://mcusercontent.com/61c5e3b1b5decfc41192af3ab/images/2fb37791-6334-26c2-4fd8-864de6a0e6f9.png" alt="Logo">
+    Das nächste Studio finden
+  </h2>
+  <p>Bitte gib deinen Ortsnamen ein, um das nächste Studio zu finden.</p>
+  
+  <div class="search-box">
+    <input type="text" id="userAddress" placeholder="Wo bist du gerade? (z.B. München)" onkeypress="if(event.key==='Enter') searchLocation()">
+    <button onclick="searchLocation()">Suchen</button>
+  </div>
+
+  <div id="resultCard" class="result-card"></div>
+  
+  <div id="tableContainer"></div>
+
+  <h3 style="margin-top: 30px;">🗺️ Karte zur Visualisierung</h3>
+  <div id="map"></div>
+</div>
+
+<script>
+// 1. Feste Adressen mit fertigen Koordinaten
+const FESTE_ADRESSEN = [
+  { name: "Wencke Haubold", adresse: "Markt 11, 04109 Leipzig, Deutschland", lat: 51.3406, lon: 12.3747 },
+  { name: "Nicoletta Gora", adresse: "Schillerstr. 5a, 35452 Heuchelheim, Deutschland", lat: 50.5828, lon: 8.6322 },
+  { name: "Samira Jawadi", adresse: "Schillerstr. 31, 60313 Frankfurt am Main, Deutschland", lat: 50.1152, lon: 8.6800 },
+  { name: "Alexandra Schelcher", adresse: "Am Hufeisen 15, 27283 Verden, Deutschland", lat: 52.9248, lon: 9.2435 },
+  { name: "Sara Pavo", adresse: "Merowinger Str. 35, 50677 Köln, Deutschland", lat: 50.9221, lon: 6.9551 },
+  { name: "Denise Bramberger", adresse: "Burgstallstr. 11, 4523 Neuzeug, Österreich", lat: 48.0269, lon: 14.3792 },
+  { name: "Zuzanne Lach", adresse: "Mariahilfer Str. 126/21, 1070 Wien, Österreich", lat: 48.1965, lon: 16.3424 },
+  { name: "Julia Dittrich", adresse: "Haingasse 5, 61348 Bad Homburg, Deutschland", lat: 50.2281, lon: 8.6145 },
+  { name: "Kim Kampe-Diekmann", adresse: "Doornkaatstr., 26506 Norden, Deutschland", lat: 53.5956, lon: 7.2046 },
+  { name: "Christiane Maserke", adresse: "Sittardweg 24, 53902 Bad Münstereifel, Deutschland", lat: 50.5372, lon: 6.7628 },
+  { name: "Tabitha Marr", adresse: "Parkweg 5, 24855 Jübek, Deutschland", lat: 54.5516, lon: 9.4079 },
+  { name: "Michaela Woller", adresse: "Moorchaussee 128, 21683 Stade, Deutschland", lat: 53.5937, lon: 9.4716 },
+  { name: "Petra Oberauner", adresse: "Mauthen 215, 9640 Kötschach-Mauthen, Österreich", lat: 46.6669, lon: 13.0041 },
+  { name: "Bahar Durgunsu", adresse: "Kamener Str. 11, 33647 Bielefeld, Deutschland", lat: 51.9868, lon: 8.4907 },
+  { name: "Christine Mörschbacher", adresse: "Sulzbacherstr. 18, 4820 Bad Ischl, Österreich", lat: 47.7126, lon: 13.6288 },
+  { name: "Antje Benecke", adresse: "Ernst-Thälmann-Str. 36, 14789 Wusterwitz, Deutschland", lat: 52.3912, lon: 12.3871 },
+  { name: "Karin Schnelzer", adresse: "Haid 146, 5760 Saalfelden, Österreich", lat: 47.4262, lon: 12.8465 },
+  { name: "Heike Dossmann", adresse: "Moselstr. 3, 12159 Berlin, Deutschland", lat: 52.4721, lon: 13.3361 },
+  { name: "Sophia Kreutzer", adresse: "Jüdenstr. 30, 06886 Lutherstadt Wittenberg, Deutschland", lat: 51.8665, lon: 12.6432 },
+  { name: "Julia Petker", adresse: "Am Klostergarten 33, 53121 Bonn, Deutschland", lat: 50.7371, lon: 7.0543 },
+  { name: "Irina Popp", adresse: "07260 Porreres, Mallorca, Spanien", lat: 39.5181, lon: 3.0232 },
+  { name: "Julia Schwicker", adresse: "Ludwig-Jahn-Str. 72, 73732 Esslingen, Deutschland", lat: 48.7478, lon: 9.3245 },
+  { name: "Julia Starke", adresse: "Halber Str. 16, 15746 Groß Köris, Deutschland", lat: 52.1678, lon: 13.6610 },
+  { name: "Rachel Tino-Jehle", adresse: "Reberastr. 30, 9494 Schaan, Liechtenstein", lat: 47.1681, lon: 9.5110 },
+  { name: "Yvonne Werner", adresse: "Tuchmacherstr. 11, 84453 Mühldorf am Inn, Deutschland", lat: 48.2435, lon: 12.5278 },
+  { name: "Joana Pfeiderer", adresse: "Waggershauser Str. 145, 88045 Friedrichshafen, Deutschland", lat: 47.6625, lon: 9.4589 },
+  { name: "Alexandra Lauer", adresse: "Jakob-Scheel-Weg 10/1, 73312 Geislingen, Deutschland", lat: 48.6189, lon: 9.8324 },
+  { name: "Madelon Bänziger", adresse: "Bentemmerstraat 21A, 6942 Didam, Niederlande", lat: 51.9392, lon: 6.1554 },
+  { name: "Sarah Seibert", adresse: "Im Störmersgut 21, 63874 Dammbach, Deutschland", lat: 49.8661, lon: 9.3408 },
+  { name: "Jenny Hertel", adresse: "Oppenheimer Landstr. 42, 60596 Frankfurt am Main, Deutschland", lat: 50.0987, lon: 8.6832 },
+  { name: "Miriam Felice", adresse: "Hauptstraße 75, 68259 Mannheim-Feudenheim, Deutschland", lat: 49.4841, lon: 8.5298 }
+];
+
+// 2. Karte auf Mitteleuropa initialisieren
+const map = L.map('map').setView([50.1109, 8.6821], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap Kontributoren'
+}).addTo(map);
+
+let markersGroup = L.layerGroup().addTo(map);
+let studioMarkers = {}; // Speicher für Tabellen-Klick-Interaktion
+
+// 3. Haversine-Formel für Luftlinie in km
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
+// 4. Zoom-Funktion bei Klick auf Tabellenzeile
+function focusStudio(index) {
+  const ziel = FESTE_ADRESSEN[index];
+  if (ziel && studioMarkers[index]) {
+    map.setView([ziel.lat, ziel.lon], 14, { animate: true });
+    studioMarkers[index].openPopup();
+  }
+}
+
+// 5. Hauptfunktion zur Standortsuche & Auswertung
+async function searchLocation() {
+  const query = document.getElementById('userAddress').value;
+  if (!query) return;
+
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+    const data = await response.json();
+
+    if (data.length === 0) {
+      alert("Ort konnte nicht gefunden werden. Bitte überprüfe die Schreibweise.");
+      return;
+    }
+
+    const userLat = parseFloat(data[0].lat);
+    const userLon = parseFloat(data[0].lon);
+
+    let results = FESTE_ADRESSEN.map(ziel => {
+      const dist = calculateDistance(userLat, userLon, ziel.lat, ziel.lon);
+      return { ...ziel, distanz: dist };
+    });
+
+    results.sort((a, b) => a.distanz - b.distanz);
+    const closest = results[0];
+
+    const resultCard = document.getElementById('resultCard');
+    resultCard.style.display = 'block';
+    resultCard.innerHTML = `
+      <h3>🎉 Nächstes Studio: ${closest.name}</h3>
+      <p>📍 <b>Adresse:</b> ${closest.adresse}</p>
+      <p>📏 <b>Entfernung (Luftlinie):</b> ${closest.distanz.toFixed(2)} km</p>
+    `;
+
+    // Tabelle neu aufbauen mit Klick-Event je Zeile
+    studioMarkers = {};
+    let tableHTML = `
+      <h3>📋 Alle Studios nach Entfernung per Luftlinie</h3>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Adresse</th><th>Entfernung (km)</th></tr>
+        </thead>
+        <tbody>
+    `;
+    
+    results.forEach(r => {
+      const originalIndex = FESTE_ADRESSEN.findIndex(f => f.name === r.name);
+      tableHTML += `
+        <tr onclick="focusStudio(${originalIndex})" title="Klicken, um Standort auf Karte zu zeigen">
+          <td><b>${r.name}</b></td>
+          <td>${r.adresse}</td>
+          <td>${r.distanz.toFixed(2)} km</td>
+        </tr>`;
+    });
+    tableHTML += '</tbody></table>';
+    document.getElementById('tableContainer').innerHTML = tableHTML;
+
+    markersGroup.clearLayers();
+
+    // User Standort-Marker
+    const userMarker = L.circleMarker([userLat, userLon], { color: 'green', fillColor: '#28a745', fillOpacity: 0.9, radius: 9 }).addTo(markersGroup);
+    userMarker.bindPopup(`<b>Dein Standort:</b><br>${data[0].display_name}`).openPopup();
+
+    // Studio-Marker auf Karte zeichnen & verknüpfen
+    results.forEach((ziel, idx) => {
+      const originalIndex = FESTE_ADRESSEN.findIndex(f => f.name === ziel.name);
+      const color = idx === 0 ? 'red' : 'blue';
+      const marker = L.circleMarker([ziel.lat, ziel.lon], { color: color, radius: 7 }).addTo(markersGroup);
+      marker.bindPopup(`<b>${ziel.name}</b><br>${ziel.adresse}<br><b>${ziel.distanz.toFixed(2)} km</b>`);
+      
+      studioMarkers[originalIndex] = marker;
+    });
+
+    // Linie zum nächsten Studio ziehen
+    L.polyline([[userLat, userLon], [closest.lat, closest.lon]], { color: 'red', weight: 3, dashArray: '5, 10' }).addTo(markersGroup);
+
+    // Ausrichtung der Karte anpassen
+    const bounds = L.latLngBounds([[userLat, userLon], [closest.lat, closest.lon]]);
+    map.fitBounds(bounds, { padding: [60, 60] });
+
+  } catch (err) {
+    alert("Fehler bei der Adresssuche. Bitte versuche es erneut.");
+  }
+}
+</script>
+
+</body>
+</html>
