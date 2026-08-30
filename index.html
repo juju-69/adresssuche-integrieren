@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="de">
 <head>
   <meta charset="UTF-8">
   <title>Studio-Suche</title>
@@ -14,6 +16,7 @@
   <style>
     body { font-family: 'Montserrat', sans-serif; background-color: #e6d8cd; margin: 0; padding: 20px; }
     .container { max-width: 900px; margin: auto; background: #dcd6cf; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    
     /* Header mit Logo-Ausrichtung */
     .custom-header {
       display: flex;
@@ -66,12 +69,40 @@
       box-shadow: 0 0 45px 18px rgba(34, 34, 34, 0.6);
     }
 
+    /* Button für "Zur Karte" im gleichen Stil */
+    .btn-to-map {
+      padding: 8px 16px;
+      background-color: #222222;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Montserrat', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 0 20px 6px rgba(34, 34, 34, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .btn-to-map:hover {
+      background-color: #333333;
+      box-shadow: 0 0 30px 10px rgba(34, 34, 34, 0.5);
+    }
+
+    /* Flexbox für Tabellen-Überschrift & Button auf gleicher Höhe */
+    .table-header-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
     .result-card { display: none; background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
     .result-card h3 { margin-top: 0; color: #2e7d32; }
     #map { height: 450px; border-radius: 8px; border: 1px solid #ddd; margin-top: 15px; }
     
     /* Tabelle Styling & Zebra-Streifen */
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.1); }
     th { background-color: #d8cfc4; font-weight: bold; }
     
@@ -81,12 +112,12 @@
       transition: background-color 0.2s ease;
     }
 
-    /* Jede zweite Zeile abwechselnd einfärben */
+    /* Jede zweite Zeile einfärben */
     tbody tr:nth-child(even) {
       background-color: rgba(0, 0, 0, 0.04);
     }
 
-    /* Hover-Effekt beim Drüberfahren */
+    /* Hover-Effekt */
     tbody tr:hover {
       background-color: rgba(0, 0, 0, 0.09);
     }
@@ -99,7 +130,7 @@
     <img src="https://mcusercontent.com/61c5e3b1b5decfc41192af3ab/images/2fb37791-6334-26c2-4fd8-864de6a0e6f9.png" alt="Logo">
     Das nächste Studio finden
   </h2>
-  <p>Bitte gib deinen Ortsnamen ein, um das nächste Studio zu finden.</p>
+  <p>Bitte geben Sie ihren Ortsnamen ein, um das nächste Studio zu finden.</p>
   
   <div class="search-box">
     <input type="text" id="userAddress" placeholder="Wo bist du gerade? (z.B. München)" onkeypress="if(event.key==='Enter') searchLocation()">
@@ -115,7 +146,11 @@
 </div>
 
 <script>
-// 1. Feste Adressen mit fertigen Koordinaten
+// OPTIONAL: Trage hier deinen kostenlosen LocationIQ API-Key ein (für 5.000 Anfragen/Tag auf kommerziellen Seiten)
+// Falls leer (""), nutzt das Skript automatisch eine konforme Nominatim-Schnittstelle.
+const LOCATIONIQ_API_KEY = "";
+
+// 1. Feste Adressen mit Koordinaten
 const FESTE_ADRESSEN = [
   { name: "Wencke Haubold", adresse: "Markt 11, 04109 Leipzig, Deutschland", lat: 51.3406, lon: 12.3747 },
   { name: "Nicoletta Gora", adresse: "Schillerstr. 5a, 35452 Heuchelheim, Deutschland", lat: 50.5828, lon: 8.6322 },
@@ -150,7 +185,7 @@ const FESTE_ADRESSEN = [
   { name: "Miriam Felice", adresse: "Hauptstraße 75, 68259 Mannheim-Feudenheim, Deutschland", lat: 49.4841, lon: 8.5298 }
 ];
 
-// 2. Karte auf Mitteleuropa initialisieren
+// 2. Karte mit Mitteleuropa starten
 const map = L.map('map').setView([50.1109, 8.6821], 6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap Kontributoren'
@@ -170,26 +205,46 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
-// 4. Zoom-Funktion bei Klick auf Tabellenzeile
+// 4. Standort bei Klick auf Tabellenzeile fokussieren & sanft zur Karte scrollen
 function focusStudio(index) {
   const ziel = FESTE_ADRESSEN[index];
   if (ziel && studioMarkers[index]) {
     map.setView([ziel.lat, ziel.lon], 14, { animate: true });
     studioMarkers[index].openPopup();
+    
+    // Automatisch zur Karte scrollen
+    document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 }
 
-// 5. Hauptfunktion zur Standortsuche & Auswertung
+// Helper für Geocoding-Fetch (kommerziell-konform)
+async function fetchGeocoding(query) {
+  if (LOCATIONIQ_API_KEY) {
+    const url = `https://us1.locationiq.com/v1/search?key=${LOCATIONIQ_API_KEY}&q=${encodeURIComponent(query)}&format=json`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("LocationIQ Abfrage fehlgeschlagen");
+    return await response.json();
+  } else {
+    // Falls kein Key eingetragen ist: Nominatim mit eigener App-Kennung nutzen
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
+    const response = await fetch(url, {
+      headers: { 'Accept-Language': 'de', 'User-Agent': 'StudioFinder/1.0 (WebApp)' }
+    });
+    if (!response.ok) throw new Error("Nominatim Abfrage fehlgeschlagen");
+    return await response.json();
+  }
+}
+
+// 5. Hauptfunktion Standortsuche
 async function searchLocation() {
   const query = document.getElementById('userAddress').value;
   if (!query) return;
 
   try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-    const data = await response.json();
+    const data = await fetchGeocoding(query);
 
-    if (data.length === 0) {
-      alert("Ort konnte nicht gefunden werden. Bitte überprüfe die Schreibweise.");
+    if (!data || data.length === 0) {
+      alert("Ort konnte nicht gefunden werden. Bitte überprüfen Sie die Schreibweise.");
       return;
     }
 
@@ -212,10 +267,13 @@ async function searchLocation() {
       <p>📏 <b>Entfernung (Luftlinie):</b> ${closest.distanz.toFixed(2)} km</p>
     `;
 
-    // Tabelle neu aufbauen mit Klick-Event je Zeile
+    // Tabelle neu aufbauen mit Klick-Event je Zeile und "Zur Karte"-Button
     studioMarkers = {};
     let tableHTML = `
-      <h3>📋 Alle Studios nach Entfernung per Luftlinie</h3>
+      <div class="table-header-flex">
+        <h3 style="margin: 0;">📋 Alle Studios nach Entfernung per Luftlinie</h3>
+        <button class="btn-to-map" onclick="document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'center' })">Zur Karte</button>
+      </div>
       <table>
         <thead>
           <tr><th>Name</th><th>Adresse</th><th>Entfernung (km)</th></tr>
@@ -239,7 +297,7 @@ async function searchLocation() {
 
     // User Standort-Marker
     const userMarker = L.circleMarker([userLat, userLon], { color: 'green', fillColor: '#28a745', fillOpacity: 0.9, radius: 9 }).addTo(markersGroup);
-    userMarker.bindPopup(`<b>Dein Standort:</b><br>${data[0].display_name}`).openPopup();
+    userMarker.bindPopup(`<b>Ihr Standort:</b><br>${data[0].display_name}`).openPopup();
 
     // Studio-Marker auf Karte zeichnen & verknüpfen
     results.forEach((ziel, idx) => {
