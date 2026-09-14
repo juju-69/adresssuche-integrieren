@@ -2,20 +2,23 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Studio-Suche</title>
-  
-  <!-- Google Font: Montserrat einbinden -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 
-  <!-- Leaflet CSS & JS für die interaktive Karte -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- MapLibre GL JS für die interaktive Karte (kompatibel mit OpenFreeMap) -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   
   <style>
-    body { font-family: 'Montserrat', sans-serif; background-color: #e6d8cd; margin: 0; padding: 20px; }
+    body { font-family: 'Helvetica', 'Arial', sans-serif; background-color: #e6d8cd; margin: 0; padding: 20px; }
     .container { max-width: 900px; margin: auto; background: #dcd6cf; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+    @media (max-width: 480px) {
+      body { padding: 10px; }
+      .container { padding: 15px; }
+      .custom-header { flex-wrap: wrap; }
+      .custom-header img { height: 60px; }
+    }
     
     /* Header mit Logo-Ausrichtung */
     .custom-header {
@@ -42,6 +45,7 @@
       box-shadow: 0 0 35px 12px rgba(34, 34, 34, 0.4); 
       outline: none;
       transition: all 0.3s ease;
+      min-width: 0;
     }
 
     .search-box input::placeholder { 
@@ -101,7 +105,7 @@
       border: none;
       border-radius: 8px;
       font-size: 14px;
-      font-family: 'Montserrat', sans-serif;
+      font-family: 'Helvetica', 'Arial', sans-serif;
       cursor: pointer;
       box-shadow: 0 0 20px 6px rgba(34, 34, 34, 0.3);
       transition: all 0.3s ease;
@@ -120,13 +124,30 @@
       margin-bottom: 15px;
     }
 
-    .result-card { display: none; background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .result-card { 
+      max-height: 0; 
+      opacity: 0; 
+      overflow: hidden; 
+      background: #e8f5e9; 
+      border: 1px solid #c8e6c9; 
+      padding: 0 15px; 
+      margin-bottom: 0; 
+      border-radius: 8px; 
+      transition: max-height 0.4s ease, opacity 0.4s ease, padding 0.4s ease, margin-bottom 0.4s ease;
+    }
+    .result-card.visible {
+      max-height: 300px;
+      opacity: 1;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
     .result-card h3 { margin-top: 0; color: #2e7d32; }
     #map { height: 450px; border-radius: 8px; border: 1px solid #ddd; margin-top: 15px; }
     
     .bottom-actions {
       display: flex;
       justify-content: flex-end;
+      gap: 10px;
       margin-top: 20px;
     }
 
@@ -172,13 +193,16 @@
   <div id="map"></div>
 
   <div class="bottom-actions">
+    <button class="btn-to-location" onclick="smoothScrollToElement(document.getElementById('userAddress')); document.getElementById('userAddress').focus({ preventScroll: true });">Zurück zur Adresssuche</button>
     <button class="btn-to-location" onclick="focusUserLocation()">Zurück zu Ihrem Standort</button>
   </div>
+
+  <p style="text-align: center; font-size: 12px; color: #888; margin-top: 15px;">
+    Adresssuche powered by <a href="https://www.geoapify.com/" target="_blank" rel="noopener" style="color: #888;">Geoapify</a>
+  </p>
 </div>
 
 <script>
-const LOCATIONIQ_API_KEY = "";
-
 const FESTE_ADRESSEN = [
   { name: "Wencke Haubold", adresse: "Markt 11, 04109 Leipzig, Deutschland", lat: 51.3406, lon: 12.3747 },
   { name: "Nicoletta Gora", adresse: "Schillerstr. 5a, 35452 Heuchelheim, Deutschland", lat: 50.5828, lon: 8.6322 },
@@ -216,18 +240,39 @@ const FESTE_ADRESSEN = [
   { name: "Melissa Wefers", adresse: "Herzogstr. 49, 46145 Oberhausen, Deutschland", lat: 51.5300, lon: 6.8672 },
   { name: "Gréta Farkas", adresse: "Bismarckstr. 14, 75015 Bretten, Deutschland", lat: 49.0396, lon: 8.7012 },
   { name: "Hautkompetenz Praxis Kerstin Thiemeyer", adresse: "Schickstr. 9, 70182 Stuttgart, Deutschland", lat: 48.7691, lon: 9.1835 },
-    
 ];
 
-const map = L.map('map').setView([50.1109, 8.6821], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap Kontributoren'
-}).addTo(map);
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/liberty',
+  center: [8.6821, 50.1109],
+  zoom: 6
+});
+map.addControl(new maplibregl.NavigationControl(), 'top-left');
+let mapReady = false;
+map.on('load', () => { mapReady = true; });
 
-let markersGroup = L.layerGroup().addTo(map);
 let studioMarkers = {};
 let currentUserMarker = null;
 let userCoords = null;
+
+function smoothScrollToElement(el) {
+  const rect = el.getBoundingClientRect();
+  const startY = window.scrollY;
+  const targetY = startY + rect.top - (window.innerHeight / 2 - rect.height / 2);
+  const distance = targetY - startY;
+  const duration = 600;
+  const startTime = performance.now();
+
+  function step(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+    window.scrollTo(0, startY + distance * ease);
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -239,22 +284,91 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
+function createDotElement(fillColor, borderColor) {
+  const el = document.createElement('div');
+  el.style.width = '16px';
+  el.style.height = '16px';
+  el.style.borderRadius = '50%';
+  el.style.backgroundColor = fillColor;
+  el.style.border = `2px solid ${borderColor}`;
+  el.style.boxShadow = '0 0 4px rgba(0,0,0,0.5)';
+  el.style.cursor = 'pointer';
+  return el;
+}
+
 function focusStudio(index) {
   const ziel = FESTE_ADRESSEN[index];
-  if (ziel && studioMarkers[index]) {
-    map.setView([ziel.lat, ziel.lon], 14, { animate: true });
-    studioMarkers[index].openPopup();
-    document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const marker = studioMarkers[index];
+  if (ziel && marker) {
+    map.flyTo({ center: [ziel.lon, ziel.lat], zoom: 14, duration: 1500 });
+    if (!marker.getPopup().isOpen()) marker.togglePopup();
+    smoothScrollToElement(document.getElementById('map'));
   }
 }
 
 function focusUserLocation() {
   if (userCoords && currentUserMarker) {
-    map.setView([userCoords.lat, userCoords.lon], 13, { animate: true });
-    currentUserMarker.openPopup();
+    map.flyTo({ center: [userCoords.lon, userCoords.lat], zoom: 13, duration: 1500 });
+    if (!currentUserMarker.getPopup().isOpen()) currentUserMarker.togglePopup();
+    smoothScrollToElement(document.getElementById('map'));
   } else {
     alert("Bitte führe zuerst eine Suche durch oder nutze den GPS-Button.");
   }
+}
+
+function renderMapData(userLat, userLon, labelText, results, closest) {
+  // Alte Marker entfernen
+  Object.values(studioMarkers).forEach(m => m.remove());
+  studioMarkers = {};
+  if (currentUserMarker) currentUserMarker.remove();
+
+  // Nutzer-Marker (grün)
+  currentUserMarker = new maplibregl.Marker({ element: createDotElement('#28a745', 'white') })
+    .setLngLat([userLon, userLat])
+    .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(`<b>Ihr Standort:</b><br>${labelText}`))
+    .addTo(map);
+  currentUserMarker.togglePopup();
+
+  // Studio-Marker (rot = nächstes, blau = restliche)
+  results.forEach((ziel, idx) => {
+    const originalIndex = FESTE_ADRESSEN.findIndex(f => f.name === ziel.name);
+    const color = idx === 0 ? '#e63946' : '#3388ff';
+    const marker = new maplibregl.Marker({ element: createDotElement(color, 'white') })
+      .setLngLat([ziel.lon, ziel.lat])
+      .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(`<b>${ziel.name}</b><br>${ziel.adresse}<br><b>${ziel.distanz.toFixed(2)} km</b>`))
+      .addTo(map);
+    studioMarkers[originalIndex] = marker;
+  });
+
+  // Verbindungslinie zwischen Nutzer und nächstem Studio
+  const routeGeoJSON = {
+    type: 'Feature',
+    geometry: { type: 'LineString', coordinates: [[userLon, userLat], [closest.lon, closest.lat]] }
+  };
+  if (map.getSource('route')) {
+    map.getSource('route').setData(routeGeoJSON);
+  } else {
+    map.addSource('route', { type: 'geojson', data: routeGeoJSON });
+    map.addLayer({
+      id: 'route-line',
+      type: 'line',
+      source: 'route',
+      paint: { 'line-color': '#e63946', 'line-width': 3, 'line-dasharray': [2, 2] }
+    });
+  }
+
+  const lons = [userLon, closest.lon];
+  const lats = [userLat, closest.lat];
+  
+  // Flüssige Kamera-Animation zur Kartenansicht (1500 ms)
+  map.fitBounds(
+    [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+    { 
+      padding: 60,
+      animate: true,
+      duration: 1500 
+    }
+  );
 }
 
 function processCoordinates(userLat, userLon, labelText) {
@@ -269,18 +383,17 @@ function processCoordinates(userLat, userLon, labelText) {
   const closest = results[0];
 
   const resultCard = document.getElementById('resultCard');
-  resultCard.style.display = 'block';
+  resultCard.classList.add('visible');
   resultCard.innerHTML = `
     <h3>🎉 Nächstes Studio: ${closest.name}</h3>
     <p>📍 <b>Adresse:</b> ${closest.adresse}</p>
     <p>📏 <b>Entfernung (Luftlinie):</b> ${closest.distanz.toFixed(2)} km</p>
   `;
 
-  studioMarkers = {};
   let tableHTML = `
     <div class="table-header-flex">
       <h3 style="margin: 0;">📋 Alle Studios nach Entfernung per Luftlinie</h3>
-      <button class="btn-to-map" onclick="document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'center' })">Zur Karte</button>
+      <button class="btn-to-map" onclick="smoothScrollToElement(document.getElementById('map'))">Zur Karte</button>
     </div>
     <table>
       <thead>
@@ -301,24 +414,14 @@ function processCoordinates(userLat, userLon, labelText) {
   tableHTML += '</tbody></table>';
   document.getElementById('tableContainer').innerHTML = tableHTML;
 
-  markersGroup.clearLayers();
+  if (mapReady) {
+    renderMapData(userLat, userLon, labelText, results, closest);
+  } else {
+    map.once('load', () => renderMapData(userLat, userLon, labelText, results, closest));
+  }
 
-  currentUserMarker = L.circleMarker([userLat, userLon], { color: 'green', fillColor: '#28a745', fillOpacity: 0.9, radius: 9 }).addTo(markersGroup);
-  currentUserMarker.bindPopup(`<b>Ihr Standort:</b><br>${labelText}`).openPopup();
-
-  results.forEach((ziel, idx) => {
-    const originalIndex = FESTE_ADRESSEN.findIndex(f => f.name === ziel.name);
-    const color = idx === 0 ? 'red' : 'blue';
-    const marker = L.circleMarker([ziel.lat, ziel.lon], { color: color, radius: 7 }).addTo(markersGroup);
-    marker.bindPopup(`<b>${ziel.name}</b><br>${ziel.adresse}<br><b>${ziel.distanz.toFixed(2)} km</b>`);
-    
-    studioMarkers[originalIndex] = marker;
-  });
-
-  L.polyline([[userLat, userLon], [closest.lat, closest.lon]], { color: 'red', weight: 3, dashArray: '5, 10' }).addTo(markersGroup);
-
-  const bounds = L.latLngBounds([[userLat, userLon], [closest.lat, closest.lon]]);
-  map.fitBounds(bounds, { padding: [60, 60] });
+  // Weiches Scrollen zur Karte nach Auswertung
+  smoothScrollToElement(document.getElementById('map'));
 }
 
 function locateUserGPS() {
@@ -346,27 +449,25 @@ function locateUserGPS() {
       btn.innerHTML = '𖡡';
     },
     { 
-      enableHighAccuracy: false, // Nutzt WLAN/Funkzelle (sehr schnell, ca. 100-200m Genauigkeit)
-      timeout: 6000,             // Abbruch nach max. 6 Sek.
-      maximumAge: 60000          // Nutzt Positions-Cache der letzten 60 Sekunden
+      enableHighAccuracy: false,
+      timeout: 6000,
+      maximumAge: 60000
     }
   );
 }
 
 async function fetchGeocoding(query) {
-  if (LOCATIONIQ_API_KEY) {
-    const url = `https://us1.locationiq.com/v1/search?key=${LOCATIONIQ_API_KEY}&q=${encodeURIComponent(query)}&format=json`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("LocationIQ Abfrage fehlgeschlagen");
-    return await response.json();
-  } else {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
-    const response = await fetch(url, {
-      headers: { 'Accept-Language': 'de', 'User-Agent': 'StudioFinder/1.0 (WebApp)' }
-    });
-    if (!response.ok) throw new Error("Nominatim Abfrage fehlgeschlagen");
-    return await response.json();
-  }
+  const GEOAPIFY_API_KEY = "ec396219d6ee495fbab2642e16835386";
+  const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&apiKey=${GEOAPIFY_API_KEY}&format=json&lang=de`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Geoapify Geocoding Abfrage fehlgeschlagen");
+  const data = await response.json();
+
+  return data.results.map(result => ({
+    lat: result.lat,
+    lon: result.lon,
+    display_name: result.formatted
+  }));
 }
 
 async function searchLocation() {
