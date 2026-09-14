@@ -5,13 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Studio-Suche</title>
 
-  <!-- MapLibre GL JS für die interaktive Karte (kompatibel mit OpenFreeMap) -->
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   
   <style>
-    body { font-family: 'Helvetica', 'Arial', sans-serif; background-color: #e6d8cd; margin: 0; padding: 20px; }
-    .container { max-width: 900px; margin: auto; background: #dcd6cf; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      background: #e6d8cd; 
+      margin: 0; 
+      padding: 20px; 
+    }
+    .container { 
+      max-width: 900px; 
+      margin: 0 auto; 
+      background: #dcd6cf; 
+      padding: 25px; 
+      border-radius: 10px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
 
     @media (max-width: 480px) {
       body { padding: 10px; }
@@ -20,7 +31,6 @@
       .custom-header img { height: 60px; }
     }
     
-    /* Header mit Logo-Ausrichtung */
     .custom-header {
       display: flex;
       align-items: center;
@@ -33,95 +43,79 @@
       flex-shrink: 0;
     }
 
-    .search-box { display: flex; gap: 10px; margin-top: 30px; margin-bottom: 35px; }
+    .search-box { 
+      display: flex; 
+      gap: 10px; 
+      margin: 30px 0 35px; 
+    }
     .search-box input { 
       flex: 1; 
       padding: 12px 16px; 
       border: none; 
-      background-color: #222222; 
-      color: #FFFFFF; 
+      background-color: #222; 
+      color: #fff; 
       border-radius: 8px; 
       font-size: 16px; 
       box-shadow: 0 0 35px 12px rgba(34, 34, 34, 0.4); 
       outline: none;
-      transition: all 0.3s ease;
+      transition: box-shadow 0.3s;
       min-width: 0;
     }
 
-    .search-box input::placeholder { 
-      color: #A0A0A0; 
-    }
-
-    .search-box input:focus {
-      box-shadow: 0 0 45px 18px rgba(34, 34, 34, 0.6);
-    }
+    .search-box input::placeholder { color: #a0a0a0; }
+    .search-box input:focus { box-shadow: 0 0 45px 18px rgba(34, 34, 34, 0.6); }
 
     .search-box button { 
       padding: 12px 20px; 
-      background-color: #222222; 
-      color: white; 
+      background-color: #222; 
+      color: #fff; 
       border: none; 
       border-radius: 8px; 
       font-size: 16px; 
       cursor: pointer; 
       box-shadow: 0 0 35px 12px rgba(34, 34, 34, 0.4); 
-      transition: all 0.3s ease; 
+      transition: background-color 0.2s; 
       display: flex;
       align-items: center;
       justify-content: center;
       min-width: 48px;
     }
 
-    .search-box button:hover { 
-      background-color: #333333; 
-      box-shadow: 0 0 45px 18px rgba(34, 34, 34, 0.6);
-    }
+    .search-box button:hover { background-color: #333; }
+    .search-box button:disabled { cursor: not-allowed; opacity: 0.7; }
 
-    .search-box button:disabled {
-      cursor: not-allowed;
-      opacity: 0.7;
-    }
-
-    /* CSS Ladekreis (Spinner) */
     .spinner {
       width: 16px;
       height: 16px;
       border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top: 2px solid #ffffff;
+      border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      to { transform: rotate(360deg); }
     }
 
-    /* Standard-Buttons im gleichen Design */
     .btn-to-map, .btn-to-location {
       padding: 10px 18px;
-      background-color: #222222;
-      color: white;
+      background-color: #222;
+      color: #fff;
       border: none;
       border-radius: 8px;
       font-size: 14px;
-      font-family: 'Helvetica', 'Arial', sans-serif;
       cursor: pointer;
       box-shadow: 0 0 20px 6px rgba(34, 34, 34, 0.3);
-      transition: all 0.3s ease;
+      transition: background-color 0.2s;
     }
 
-    .btn-to-map:hover, .btn-to-location:hover {
-      background-color: #333333;
-      box-shadow: 0 0 30px 10px rgba(34, 34, 34, 0.5);
-    }
+    .btn-to-map:hover, .btn-to-location:hover { background-color: #333; }
 
     .table-header-flex {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 30px;
-      margin-bottom: 15px;
+      margin: 30px 0 15px;
     }
 
     .result-card { 
@@ -133,7 +127,7 @@
       padding: 0 15px; 
       margin-bottom: 0; 
       border-radius: 8px; 
-      transition: max-height 0.4s ease, opacity 0.4s ease, padding 0.4s ease, margin-bottom 0.4s ease;
+      transition: all 0.4s ease;
     }
     .result-card.visible {
       max-height: 300px;
@@ -142,6 +136,7 @@
       margin-bottom: 20px;
     }
     .result-card h3 { margin-top: 0; color: #2e7d32; }
+    
     #map { height: 450px; border-radius: 8px; border: 1px solid #ddd; margin-top: 15px; }
     
     .bottom-actions {
@@ -155,18 +150,9 @@
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.1); }
     th { background-color: #d8cfc4; font-weight: bold; }
     
-    tbody tr {
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-
-    tbody tr:nth-child(even) {
-      background-color: rgba(0, 0, 0, 0.04);
-    }
-
-    tbody tr:hover {
-      background-color: rgba(0, 0, 0, 0.09);
-    }
+    tbody tr { cursor: pointer; transition: background 0.2s; }
+    tbody tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.04); }
+    tbody tr:hover { background-color: rgba(0, 0, 0, 0.09); }
   </style>
 </head>
 <body>
@@ -176,24 +162,22 @@
     <img src="https://mcusercontent.com/61c5e3b1b5decfc41192af3ab/images/2fb37791-6334-26c2-4fd8-864de6a0e6f9.png" alt="Logo">
     Das nächste Studio finden
   </h2>
-  <p>Bitte geben Sie ihren Ortsnamen ein, um das nächste Studio zu finden.</p>
+  <p>Bitte geben Sie Ihren Ortsnamen ein, um das nächste Studio zu finden.</p>
   
   <div class="search-box">
-    <input type="text" id="userAddress" placeholder="Wo bist du gerade? (z.B. München)" onkeypress="if(event.key==='Enter') searchLocation()">
+    <input type="text" id="userAddress" placeholder="Wo bist du gerade? (z.B. München)" onkeydown="if(event.key==='Enter') searchLocation()">
     <button onclick="searchLocation()">Suchen</button>
-    <!-- GPS-Button mit ID für Spinner-Steuerung -->
     <button id="gpsBtn" onclick="locateUserGPS()" title="Aktuellen Standort per GPS ermitteln">𖡡</button>
   </div>
 
   <div id="resultCard" class="result-card"></div>
-  
   <div id="tableContainer"></div>
 
   <h3 style="margin-top: 30px;">🗺️ Karte zur Visualisierung</h3>
   <div id="map"></div>
 
   <div class="bottom-actions">
-    <button class="btn-to-location" onclick="smoothScrollToElement(document.getElementById('userAddress')); document.getElementById('userAddress').focus({ preventScroll: true });">Zurück zur Adresssuche</button>
+    <button class="btn-to-location" onclick="document.getElementById('userAddress').scrollIntoView({behavior:'smooth'}); document.getElementById('userAddress').focus();">Zurück zur Adresssuche</button>
     <button class="btn-to-location" onclick="focusUserLocation()">Zurück zu Ihrem Standort</button>
   </div>
 
@@ -203,7 +187,9 @@
 </div>
 
 <script>
-const FESTE_ADRESSEN = [
+const API_KEY = "ec396219d6ee495fbab2642e16835386";
+/*Neue adressen kannst du hier mit dem 2. tool hinzufügen wie erklärt*/
+const studios = [
   { name: "Wencke Haubold", adresse: "Markt 11, 04109 Leipzig, Deutschland", lat: 51.3406, lon: 12.3747 },
   { name: "Nicoletta Gora", adresse: "Schillerstr. 5a, 35452 Heuchelheim, Deutschland", lat: 50.5828, lon: 8.6322 },
   { name: "Samira Jawadi", adresse: "Schillerstr. 31, 60313 Frankfurt am Main, Deutschland", lat: 50.1152, lon: 8.6800 },
@@ -239,7 +225,7 @@ const FESTE_ADRESSEN = [
   { name: "Jenny Kunz", adresse: "Buschstr. 91, 58099 Hagen, Deutschland", lat: 51.3909, lon: 7.4882 },
   { name: "Melissa Wefers", adresse: "Herzogstr. 49, 46145 Oberhausen, Deutschland", lat: 51.5300, lon: 6.8672 },
   { name: "Gréta Farkas", adresse: "Bismarckstr. 14, 75015 Bretten, Deutschland", lat: 49.0396, lon: 8.7012 },
-  { name: "Hautkompetenz Praxis Kerstin Thiemeyer", adresse: "Schickstr. 9, 70182 Stuttgart, Deutschland", lat: 48.7691, lon: 9.1835 },
+  { name: "Hautkompetenz Praxis Kerstin Thiemeyer", adresse: "Schickstr. 9, 70182 Stuttgart, Deutschland", lat: 48.7691, lon: 9.1835 }
 ];
 
 const map = new maplibregl.Map({
@@ -248,107 +234,79 @@ const map = new maplibregl.Map({
   center: [8.6821, 50.1109],
   zoom: 6
 });
-map.addControl(new maplibregl.NavigationControl(), 'top-left');
-let mapReady = false;
-map.on('load', () => { mapReady = true; });
 
+map.addControl(new maplibregl.NavigationControl(), 'top-left');
+
+let mapReady = false;
 let studioMarkers = {};
 let currentUserMarker = null;
 let userCoords = null;
 
-function smoothScrollToElement(el) {
-  const rect = el.getBoundingClientRect();
-  const startY = window.scrollY;
-  const targetY = startY + rect.top - (window.innerHeight / 2 - rect.height / 2);
-  const distance = targetY - startY;
-  const duration = 600;
-  const startTime = performance.now();
+map.on('load', () => { mapReady = true; });
 
-  function step(currentTime) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-    window.scrollTo(0, startY + distance * ease);
-    if (progress < 1) requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
-}
-
-function calculateDistance(lat1, lon1, lat2, lon2) {
+function calcDist(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2)**2;
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
-function createDotElement(fillColor, borderColor) {
+function createMarkerPin(bg, border) {
   const el = document.createElement('div');
-  el.style.width = '16px';
-  el.style.height = '16px';
-  el.style.borderRadius = '50%';
-  el.style.backgroundColor = fillColor;
-  el.style.border = `2px solid ${borderColor}`;
-  el.style.boxShadow = '0 0 4px rgba(0,0,0,0.5)';
-  el.style.cursor = 'pointer';
+  el.style.cssText = `width:16px; height:16px; border-radius:50%; background:${bg}; border:2px solid ${border}; box-shadow:0 0 4px rgba(0,0,0,0.5); cursor:pointer;`;
   return el;
 }
 
-function focusStudio(index) {
-  const ziel = FESTE_ADRESSEN[index];
-  const marker = studioMarkers[index];
-  if (ziel && marker) {
-    map.flyTo({ center: [ziel.lon, ziel.lat], zoom: 14, duration: 1500 });
+function focusStudio(idx) {
+  const target = studios[idx];
+  const marker = studioMarkers[idx];
+  if (target && marker) {
+    map.flyTo({ center: [target.lon, target.lat], zoom: 14, duration: 1200 });
     if (!marker.getPopup().isOpen()) marker.togglePopup();
-    smoothScrollToElement(document.getElementById('map'));
+    document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
   }
 }
 
 function focusUserLocation() {
   if (userCoords && currentUserMarker) {
-    map.flyTo({ center: [userCoords.lon, userCoords.lat], zoom: 13, duration: 1500 });
+    map.flyTo({ center: [userCoords.lon, userCoords.lat], zoom: 13, duration: 1200 });
     if (!currentUserMarker.getPopup().isOpen()) currentUserMarker.togglePopup();
-    smoothScrollToElement(document.getElementById('map'));
+    document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
   } else {
-    alert("Bitte führe zuerst eine Suche durch oder nutze den GPS-Button.");
+    alert("Bitte gib zuerst einen Standort ein.");
   }
 }
 
-function renderMapData(userLat, userLon, labelText, results, closest) {
-  // Alte Marker entfernen
+function updateMap(userLat, userLon, label, sortedList, closest) {
   Object.values(studioMarkers).forEach(m => m.remove());
   studioMarkers = {};
   if (currentUserMarker) currentUserMarker.remove();
 
-  // Nutzer-Marker (grün)
-  currentUserMarker = new maplibregl.Marker({ element: createDotElement('#28a745', 'white') })
+  currentUserMarker = new maplibregl.Marker({ element: createMarkerPin('#28a745', '#fff') })
     .setLngLat([userLon, userLat])
-    .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(`<b>Ihr Standort:</b><br>${labelText}`))
+    .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(`<b>Ihr Standort:</b><br>${label}`))
     .addTo(map);
-  currentUserMarker.togglePopup();
 
-  // Studio-Marker (rot = nächstes, blau = restliche)
-  results.forEach((ziel, idx) => {
-    const originalIndex = FESTE_ADRESSEN.findIndex(f => f.name === ziel.name);
+  sortedList.forEach((item, idx) => {
+    const origIndex = studios.findIndex(s => s.name === item.name);
     const color = idx === 0 ? '#e63946' : '#3388ff';
-    const marker = new maplibregl.Marker({ element: createDotElement(color, 'white') })
-      .setLngLat([ziel.lon, ziel.lat])
-      .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(`<b>${ziel.name}</b><br>${ziel.adresse}<br><b>${ziel.distanz.toFixed(2)} km</b>`))
+    const marker = new maplibregl.Marker({ element: createMarkerPin(color, '#fff') })
+      .setLngLat([item.lon, item.lat])
+      .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(`<b>${item.name}</b><br>${item.adresse}<br><b>${item.dist.toFixed(2)} km</b>`))
       .addTo(map);
-    studioMarkers[originalIndex] = marker;
+    studioMarkers[origIndex] = marker;
   });
 
-  // Verbindungslinie zwischen Nutzer und nächstem Studio
-  const routeGeoJSON = {
+  const lineData = {
     type: 'Feature',
     geometry: { type: 'LineString', coordinates: [[userLon, userLat], [closest.lon, closest.lat]] }
   };
+
   if (map.getSource('route')) {
-    map.getSource('route').setData(routeGeoJSON);
+    map.getSource('route').setData(lineData);
   } else {
-    map.addSource('route', { type: 'geojson', data: routeGeoJSON });
+    map.addSource('route', { type: 'geojson', data: lineData });
     map.addLayer({
       id: 'route-line',
       type: 'line',
@@ -359,74 +317,60 @@ function renderMapData(userLat, userLon, labelText, results, closest) {
 
   const lons = [userLon, closest.lon];
   const lats = [userLat, closest.lat];
-  
-  // Flüssige Kamera-Animation zur Kartenansicht (1500 ms)
   map.fitBounds(
     [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
-    { 
-      padding: 60,
-      animate: true,
-      duration: 1500 
-    }
+    { padding: 60, animate: true, duration: 1200 }
   );
 }
 
-function processCoordinates(userLat, userLon, labelText) {
-  userCoords = { lat: userLat, lon: userLon };
+function updateView(lat, lon, labelText) {
+  userCoords = { lat, lon };
 
-  let results = FESTE_ADRESSEN.map(ziel => {
-    const dist = calculateDistance(userLat, userLon, ziel.lat, ziel.lon);
-    return { ...ziel, distanz: dist };
-  });
+  const list = studios.map(s => ({ ...s, dist: calcDist(lat, lon, s.lat, s.lon) }))
+                     .sort((a, b) => a.dist - b.dist);
+  
+  const closest = list[0];
 
-  results.sort((a, b) => a.distanz - b.distanz);
-  const closest = results[0];
-
-  const resultCard = document.getElementById('resultCard');
-  resultCard.classList.add('visible');
-  resultCard.innerHTML = `
+  const card = document.getElementById('resultCard');
+  card.classList.add('visible');
+  card.innerHTML = `
     <h3>🎉 Nächstes Studio: ${closest.name}</h3>
     <p>📍 <b>Adresse:</b> ${closest.adresse}</p>
-    <p>📏 <b>Entfernung (Luftlinie):</b> ${closest.distanz.toFixed(2)} km</p>
+    <p>📏 <b>Entfernung:</b> ${closest.dist.toFixed(2)} km</p>
   `;
 
-  let tableHTML = `
+  let rows = list.map(item => {
+    const origIdx = studios.findIndex(s => s.name === item.name);
+    return `
+      <tr onclick="focusStudio(${origIdx})">
+        <td><b>${item.name}</b></td>
+        <td>${item.adresse}</td>
+        <td>${item.dist.toFixed(2)} km</td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('tableContainer').innerHTML = `
     <div class="table-header-flex">
-      <h3 style="margin: 0;">📋 Alle Studios nach Entfernung per Luftlinie</h3>
-      <button class="btn-to-map" onclick="smoothScrollToElement(document.getElementById('map'))">Zur Karte</button>
+      <h3 style="margin:0;">📋 Alle Studios nach Entfernung</h3>
+      <button class="btn-to-map" onclick="document.getElementById('map').scrollIntoView({behavior:'smooth'})">Zur Karte</button>
     </div>
     <table>
-      <thead>
-        <tr><th>Name</th><th>Adresse</th><th>Entfernung (km)</th></tr>
-      </thead>
-      <tbody>
-  `;
-  
-  results.forEach(r => {
-    const originalIndex = FESTE_ADRESSEN.findIndex(f => f.name === r.name);
-    tableHTML += `
-      <tr onclick="focusStudio(${originalIndex})" title="Klicken, um Standort auf Karte zu zeigen">
-        <td><b>${r.name}</b></td>
-        <td>${r.adresse}</td>
-        <td>${r.distanz.toFixed(2)} km</td>
-      </tr>`;
-  });
-  tableHTML += '</tbody></table>';
-  document.getElementById('tableContainer').innerHTML = tableHTML;
+      <thead><tr><th>Name</th><th>Adresse</th><th>Entfernung</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 
   if (mapReady) {
-    renderMapData(userLat, userLon, labelText, results, closest);
+    updateMap(lat, lon, labelText, list, closest);
   } else {
-    map.once('load', () => renderMapData(userLat, userLon, labelText, results, closest));
+    map.once('load', () => updateMap(lat, lon, labelText, list, closest));
   }
 
-  // Weiches Scrollen zur Karte nach Auswertung
-  smoothScrollToElement(document.getElementById('map'));
+  document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
 }
 
 function locateUserGPS() {
   if (!navigator.geolocation) {
-    alert("Geolocation wird von Ihrem Browser leider nicht unterstützt.");
+    alert("GPS wird von Ihrem Browser nicht unterstützt.");
     return;
   }
 
@@ -435,60 +379,37 @@ function locateUserGPS() {
   btn.innerHTML = '<div class="spinner"></div>';
 
   navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-      processCoordinates(lat, lon, "GPS-Standort");
-      
+    pos => {
+      updateView(pos.coords.latitude, pos.coords.longitude, "GPS-Standort");
       btn.disabled = false;
       btn.innerHTML = '𖡡';
     },
-    (error) => {
-      alert("Standortzugriff konnte nicht ermittelt werden. Bitte prüfe deine Browser-Einstellungen.");
+    err => {
+      alert("Standort konnte nicht ermittelt werden.");
       btn.disabled = false;
       btn.innerHTML = '𖡡';
     },
-    { 
-      enableHighAccuracy: false,
-      timeout: 6000,
-      maximumAge: 60000
-    }
+    { timeout: 6000 }
   );
 }
 
-async function fetchGeocoding(query) {
-  const GEOAPIFY_API_KEY = "ec396219d6ee495fbab2642e16835386";
-  const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&apiKey=${GEOAPIFY_API_KEY}&format=json&lang=de`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error("Geoapify Geocoding Abfrage fehlgeschlagen");
-  const data = await response.json();
-
-  return data.results.map(result => ({
-    lat: result.lat,
-    lon: result.lon,
-    display_name: result.formatted
-  }));
-}
-
 async function searchLocation() {
-  const query = document.getElementById('userAddress').value;
+  const query = document.getElementById('userAddress').value.trim();
   if (!query) return;
 
   try {
-    const data = await fetchGeocoding(query);
+    const res = await fetch(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&apiKey=${API_KEY}&format=json&lang=de`);
+    const data = await res.json();
 
-    if (!data || data.length === 0) {
-      alert("Ort konnte nicht gefunden werden. Bitte überprüfen Sie die Schreibweise.");
+    if (!data.results || data.results.length === 0) {
+      alert("Ort wurde nicht gefunden.");
       return;
     }
 
-    const userLat = parseFloat(data[0].lat);
-    const userLon = parseFloat(data[0].lon);
-
-    processCoordinates(userLat, userLon, data[0].display_name);
-
-  } catch (err) {
-    alert("Fehler bei der Adresssuche. Bitte versuche es erneut.");
+    const { lat, lon, formatted } = data.results[0];
+    updateView(parseFloat(lat), parseFloat(lon), formatted);
+  } catch (e) {
+    alert("Fehler bei der Suche.");
   }
 }
 </script>
